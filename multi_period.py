@@ -4,7 +4,7 @@ import time
 import math
 from random import random 
 
-PERIOD=20   #ms
+PERIOD=10   #ms
 COLOR_LIST=['red','green','blue','yellow','pink',
             'orange','purple','brown','gray','olive',
             'cyan','lime','navy','tan','magenta',
@@ -81,9 +81,9 @@ class crazyflie:
             if -rx_message["timestamp"]+self.next_tx_time<2:
                 self.temp_delay=1
         #发送离接受太进（接受在发送之后） 提前下一次发送
-        if rx_message["timestamp"]+self.period-self.next_tx_time<self.period:
-            if rx_message["timestamp"]+self.period-self.next_tx_time<2:
-                self.temp_delay=-1
+        # if rx_message["timestamp"]+self.period-self.next_tx_time<self.period:
+        #     if rx_message["timestamp"]+self.period-self.next_tx_time<2:
+        #         self.temp_delay=-1
 
         self.memory(rx_message)
 
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     env=environment()    #初始化环境
     uwb_time_ms=Time(0)  #初始化时间
     cf1=crazyflie(1,PERIOD)
-    cf2=crazyflie(2,10)
+    cf2=crazyflie(2,PERIOD)
     cf3=crazyflie(3,PERIOD)
     cf4=crazyflie(4,PERIOD)
 
