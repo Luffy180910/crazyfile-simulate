@@ -44,18 +44,30 @@ class crazyflie:
     def __init__(self,addr):
         #宏观误差
         Macro_error=random()%1*0.02   #ms
+        # Macro_error=0
         self.period=PERIOD -Macro_error   #ms
         self.next_tx_time = random()%1*self.period   #ms 随机初始发送时间
+        self.signal=0
         self.temp_delay=0
         self.seq=0
         self.addr=addr
         self.timestamp=0
         self.message={"address":-1,"seq":0,"timestamp":0}
+        self.memory_list=[{"address":-1,"seq":0,"timestamp":0},{"address":-1,"seq":0,"timestamp":0}]
     def tx(self):
         if now_time>=self.next_tx_time:
             self.timestamp=self.next_tx_time
+    
+            if Strategy==2:
+                if -self.memory_list[0]["timestamp"]+self.next_tx_time<self.period and -self.memory_list[1]["timestamp"]+self.next_tx_time<self.period:
+                    self.temp_delay = (self.memory_list[0]["timestamp"]+self.memory_list[1]["timestamp"]+PERIOD)/2-self.next_tx_time
+                    self.temp_delay =int(self.temp_delay)
+                    # if self.addr==1:
+                        # print("cf",self.addr,"list[0]",self.memory_list[0]["timestamp"],"list[1]",self.memory_list[1]["timestamp"]+PERIOD)
+                        # print("cf",self.addr,"temp_delay",self.temp_delay)
             #微观误差
             Micro_error=random()%1*0.03-0.015   #ms
+            # Micro_error=0
             self.next_tx_time+=self.period+self.temp_delay+Micro_error   #ms
             self.temp_delay=0
             self.message["address"]=self.addr
@@ -65,28 +77,38 @@ class crazyflie:
 
             env.tx(self.message)
 
+
+
     def rx(self):
         rx_message=env.rx()
         if rx_message["address"]==self.addr:
             env.clean()
+            self.signal=1
             return 
         if rx_message["address"]==-1:
             return
-        # print("crazyflie",self.addr,"rx",rx_message["address"],rx_message["timestamp"])
-        #发送离接受太近（接受在发送之前） 推迟下一次发送
-        if -rx_message["timestamp"]+self.next_tx_time<self.period:
-            if -rx_message["timestamp"]+self.next_tx_time<2:
-                self.temp_delay=1
-        #发送离接受太进（接受在发送之后） 提前下一次发送
-        if rx_message["timestamp"]+self.period-self.next_tx_time<self.period:
-            if rx_message["timestamp"]+self.period-self.next_tx_time<2:
-                self.temp_delay=-1
+        if self.signal==1:
+            self.memory_list[1]=rx_message
+            self.signal=0
+            # if self.addr==1:
+                # print("cf",self.addr,"rx",rx_message["address"],rx_message["timestamp"])
+        self.memory_list[0]=rx_message
+        # if self.addr==1:
+            # print("cf",self.addr,"rx",rx_message["address"],rx_message["timestamp"])
 
-    def memory(self,message):
-        1
+        if Strategy==1:
+            #发送离接受太近（接受在发送之前） 推迟下一次发送
+            if -rx_message["timestamp"]+self.next_tx_time<self.period:
+                if -rx_message["timestamp"]+self.next_tx_time<2:
+                    self.temp_delay=1
+            #发送离接受太进（接受在发送之后） 提前下一次发送
+            if rx_message["timestamp"]+self.period-self.next_tx_time<self.period:
+                if rx_message["timestamp"]+self.period-self.next_tx_time<2:
+                    self.temp_delay=-1
 
+        
     def swarm_range(self):
-        # self.rx()
+        self.rx()
         self.tx()
 
 def plot_period():
@@ -104,6 +126,8 @@ def plot_period():
 
 
 if __name__ == '__main__':
+    Strategy=2   #1: 发送离接受太近 推迟下一次发送 2: 发送离接受太进 提前下一次发送
+
     env=environment()    #初始化环境
     uwb_time_ms=Time(0)  #初始化时间
     cf1=crazyflie(1)
@@ -126,7 +150,8 @@ if __name__ == '__main__':
     cf18=crazyflie(18)
 
 
-    num_of_while=1e3*1e3*10
+    # num_of_while=1e3*1e3*10
+    num_of_while=1e3*1e3*3
     while num_of_while:
         now_time=uwb_time_ms.update()
         if num_of_while%10000==0:
